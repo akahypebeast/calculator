@@ -5,7 +5,17 @@ echo "→ Creating virtual environment..."
 python -m venv .venv
 
 echo "→ Installing dependencies..."
-.venv/bin/pip install --upgrade pip -q
-.venv/bin/pip install -r requirements.txt -q
 
-echo "✓ Environment ready. Activate with: source .venv/bin/activate"
+# Windows vs Unix path
+if [ -f ".venv/Scripts/pip" ]; then
+    PIP=".venv/Scripts/pip"
+    PYTHON=".venv/Scripts/python"
+else
+    PIP=".venv/bin/pip"
+    PYTHON=".venv/bin/python"
+fi
+
+$PIP install --upgrade pip -q
+$PIP install -r requirements.txt -q
+
+echo "✓ Environment ready."
