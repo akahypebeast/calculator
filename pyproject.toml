@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "calculator"
+version = "0.1.0"
+description = "Simple browser calculator with Python backend"
+requires-python = ">=3.13"
+dependencies = [
+    "flask>=3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.0",
+    "pylint>=3.0",
+    "pytest>=8.0",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py313"]
+
+[tool.pylint.main]
+py-version = "3.13"
+recursive = true
+
+[tool.pylint.format]
+max-line-length = 88
+
+[tool.pylint."messages control"]
+disable = [
+    "missing-module-docstring",
+    "too-few-public-methods",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

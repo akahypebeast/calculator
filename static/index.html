@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f0f0f;
+      --surface:   #1a1a1a;
+      --panel:     #222222;
+      --border:    #2a2a2a;
+      --border-hover: #383838;
+      --text:      #efefef;
+      --muted:     #888888;
+      --dim:       #555555;
+      --accent:    #4f6ef7;
+      --accent-hover: #6b85f8;
+      --red:       #e05555;
+      --radius:    8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* subtle grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    .calc-wrapper {
+      position: relative;
+      z-index: 1;
+      width: 340px;
+    }
+
+    .calc-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      color: var(--dim);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .calc-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Display */
+    .display {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+    }
+
+    .display-expr {
+      font-size: 12px;
+      color: var(--dim);
+      min-height: 16px;
+      margin-bottom: 6px;
+      letter-spacing: 0.02em;
+      transition: color 0.15s;
+    }
+
+    .display-value {
+      font-size: 36px;
+      font-weight: 300;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      text-align: right;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      transition: all 0.1s ease;
+    }
+
+    .display-value.flash {
+      color: var(--accent);
+    }
+
+    .display-value.error {
+      color: var(--red);
+      font-size: 14px;
+      font-weight: 400;
+      padding-top: 10px;
+    }
+
+    /* Button grid */
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border);
+    }
+
+    .btn {
+      background: var(--surface);
+      border: none;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 400;
+      padding: 18px 0;
+      cursor: pointer;
+      transition: background 0.1s, color 0.1s;
+      font-family: inherit;
+      letter-spacing: -0.01em;
+    }
+
+    .btn:hover {
+      background: var(--panel);
+    }
+
+    .btn:active {
+      background: #2a2a2a;
+    }
+
+    /* Modifier keys (C, ±, %) */
+    .btn.mod {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .btn.mod:hover {
+      color: var(--text);
+    }
+
+    /* Operator keys */
+    .btn.op {
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .btn.op:hover {
+      background: rgba(79, 110, 247, 0.1);
+    }
+
+    .btn.op.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    /* Equals */
+    .btn.eq {
+      background: var(--accent);
+      color: #fff;
+      font-weight: 500;
+    }
+
+    .btn.eq:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn.eq:active {
+      background: #3d5be0;
+    }
+
+    /* Zero spans 2 columns */
+    .btn.zero {
+      grid-column: span 2;
+      text-align: left;
+      padding-left: 24px;
+    }
+
+    /* Footer */
+    .calc-footer {
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .calc-footer span {
+      font-size: 11px;
+      color: var(--dim);
+    }
+
+    .kbd {
+      display: inline-block;
+      font-size: 10px;
+      color: var(--dim);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: inherit;
+    }
+  </style>
+</head>
+<body>
+
+<div class="calc-wrapper">
+  <div class="calc-label">Calculator</div>
+
+  <div class="calc-card">
+    <div class="display">
+      <div class="display-expr" id="expr"></div>
+      <div class="display-value" id="display">0</div>
+    </div>
+
+    <div class="buttons">
+      <!-- Row 1 -->
+      <button class="btn mod" data-action="clear">C</button>
+      <button class="btn mod" data-action="sign">+/−</button>
+      <button class="btn mod" data-action="percent">%</button>
+      <button class="btn op" data-op="divide">÷</button>
+
+      <!-- Row 2 -->
+      <button class="btn" data-num="7">7</button>
+      <button class="btn" data-num="8">8</button>
+      <button class="btn" data-num="9">9</button>
+      <button class="btn op" data-op="multiply">×</button>
+
+      <!-- Row 3 -->
+      <button class="btn" data-num="4">4</button>
+      <button class="btn" data-num="5">5</button>
+      <button class="btn" data-num="6">6</button>
+      <button class="btn op" data-op="subtract">−</button>
+
+      <!-- Row 4 -->
+      <button class="btn" data-num="1">1</button>
+      <button class="btn" data-num="2">2</button>
+      <button class="btn" data-num="3">3</button>
+      <button class="btn op" data-op="add">+</button>
+
+      <!-- Row 5 -->
+      <button class="btn zero" data-num="0">0</button>
+      <button class="btn" data-action="dot">.</button>
+      <button class="btn eq" data-action="equals">=</button>
+    </div>
+  </div>
+
+  <div class="calc-footer">
+    <span>Keyboard supported</span>
+    <span><kbd class="kbd">Enter</kbd> = equals &nbsp; <kbd class="kbd">Esc</kbd> = clear</span>
+  </div>
+</div>
+
+<script>
+  const display = document.getElementById('display');
+  const expr    = document.getElementById('expr');
+
+  let current  = '0';
+  let previous = null;
+  let operator = null;
+  let waitNext = false;
+  let activeOpBtn = null;
+
+  const opSymbols = { add: '+', subtract: '−', multiply: '×', divide: '÷' };
+
+  function setDisplay(val, cls = '') {
+    display.className = 'display-value' + (cls ? ' ' + cls : '');
+    display.textContent = val;
+  }
+
+  function flashDisplay() {
+    display.classList.add('flash');
+    setTimeout(() => display.classList.remove('flash'), 180);
+  }
+
+  function updateExpr() {
+    if (previous !== null && operator) {
+      expr.textContent = `${previous} ${opSymbols[operator]}`;
+    } else {
+      expr.textContent = '';
+    }
+  }
+
+  function inputNum(n) {
+    if (waitNext) { current = n; waitNext = false; }
+    else { current = current === '0' ? n : current + n; }
+    setDisplay(formatNum(current));
+  }
+
+  function inputDot() {
+    if (waitNext) { current = '0.'; waitNext = false; }
+    else if (!current.includes('.')) { current += '.'; }
+    setDisplay(current);
+  }
+
+  function formatNum(str) {
+    const n = parseFloat(str);
+    if (isNaN(n)) return str;
+    // trim to 10 sig digits, no trailing zeros
+    const s = parseFloat(n.toPrecision(10)).toString();
+    return s;
+  }
+
+  function setOperator(op) {
+    if (operator && !waitNext) {
+      calculate(true);
+    }
+    previous = current;
+    operator = op;
+    waitNext = true;
+    updateExpr();
+    // visual active state
+    if (activeOpBtn) activeOpBtn.classList.remove('active');
+    activeOpBtn = document.querySelector(`[data-op="${op}"]`);
+    if (activeOpBtn) activeOpBtn.classList.add('active');
+  }
+
+  function calculate(silent = false) {
+    if (previous === null || operator === null) return;
+    const a = parseFloat(previous);
+    const b = parseFloat(current);
+
+    if (activeOpBtn) { activeOpBtn.classList.remove('active'); activeOpBtn = null; }
+
+    fetch('/calculate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ a, b, op: operator })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) {
+        expr.textContent = '';
+        setDisplay(data.error, 'error');
+        setTimeout(() => { setDisplay('0'); }, 1800);
+        previous = null; operator = null; current = '0'; waitNext = false;
+        return;
+      }
+      if (!silent) {
+        expr.textContent = `${previous} ${opSymbols[operator]} ${current} =`;
+        flashDisplay();
+      }
+      const res = parseFloat(data.result.toPrecision(10)).toString();
+      current = res;
+      setDisplay(res);
+      previous = null;
+      operator = null;
+      waitNext = true;
+    })
+    .catch(() => {
+      setDisplay('Error', 'error');
+      setTimeout(() => setDisplay('0'), 1800);
+    });
+  }
+
+  // Button events
+  document.querySelectorAll('.btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.num !== undefined)    { inputNum(btn.dataset.num); }
+      if (btn.dataset.op)                   { setOperator(btn.dataset.op); }
+      if (btn.dataset.action === 'equals')  { calculate(); }
+      if (btn.dataset.action === 'clear')   {
+        current = '0'; previous = null; operator = null; waitNext = false;
+        expr.textContent = '';
+        setDisplay('0');
+        if (activeOpBtn) { activeOpBtn.classList.remove('active'); activeOpBtn = null; }
+      }
+      if (btn.dataset.action === 'sign') {
+        current = (parseFloat(current) * -1).toString();
+        setDisplay(formatNum(current));
+      }
+      if (btn.dataset.action === 'percent') {
+        current = (parseFloat(current) / 100).toString();
+        setDisplay(formatNum(current));
+      }
+      if (btn.dataset.action === 'dot') { inputDot(); }
+    });
+  });
+
+  // Keyboard support
+  document.addEventListener('keydown', e => {
+    if (e.key >= '0' && e.key <= '9') inputNum(e.key);
+    if (e.key === '.')  inputDot();
+    if (e.key === '+')  setOperator('add');
+    if (e.key === '-')  setOperator('subtract');
+    if (e.key === '*')  setOperator('multiply');
+    if (e.key === '/')  { e.preventDefault(); setOperator('divide'); }
+    if (e.key === 'Enter' || e.key === '=') calculate();
+    if (e.key === 'Escape') document.querySelector('[data-action="clear"]').click();
+    if (e.key === 'Backspace') {
+      if (current.length > 1) { current = current.slice(0, -1); }
+      else { current = '0'; }
+      setDisplay(formatNum(current));
+    }
+  });
+</script>
+
+</body>
+</html>
